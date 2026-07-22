@@ -1,2 +1,0 @@
-[Product(id=123, name='plane paper', price=0.1, supplier_id=34, quantity=4500)]
-[Product(id=123, name='plane paper', price=0.1, supplier_id=34, quantity=4500), Product(id=125, name='green paper', price=0.5, supplier_id=34, quantity=499), Product(id=126, name='red paper', price=0.5, supplier_id=34, quantity=50)]

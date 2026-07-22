@@ -1,7 +1,0 @@
-Customer(id=42, name='Daniel Elgarici', city='Karmiel', address='123 Main Street')
-Customer(id=56, name='Liel Azran', city='Haifa', address='23 Main Street')
-Supplier(id=42, name='Egbaria Baraa', city='Haifa', address='32 David Rose Street')
-Product(id=101, name='Harry Potter Cushion', price=29.99, supplier_id=42, quantity=555)
-Customer(id=43, name='Regev Avraham', city='Haifa', address='123 Main Street')
-Supplier(id=43, name='Kareem Abo Gazala', city='Haifa', address='32 David Rose Street')
-Product(id=101111, name='Avatar Cushion', price=19.99, supplier_id=43, quantity=1)
