@@ -1,2 +1,0 @@
-register customer 55 Kelly_Kell Michmoret Harmzor_22
-register customer 55 Daniel_Elgarucu Karmiel Stam_Ktovet_22

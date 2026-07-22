@@ -1,1 +1,0 @@
-{"Sde Boker": ["Order(id=2, customer_id=55, product_id=123, quantity=500, total_price=50.0)", "Order(id=3, customer_id=55, product_id=125, quantity=1, total_price=0.5)"]}
