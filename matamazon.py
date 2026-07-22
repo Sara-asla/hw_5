@@ -272,7 +272,7 @@ if __name__ == '__main__':
             system = MatamazonSystem()
 
         # Parse and execute log
-        if os.path.exists(args.matamazon_log):
+        if args.matamazon_log and os.path.exists(args.matamazon_log):
             with open(args.matamazon_log, 'r') as log_file:
                 for line in log_file:
                     line = line.strip()
@@ -299,4 +299,26 @@ if __name__ == '__main__':
                         system.place_order(customer_id, product_id, qty)
 
                     elif command == 'remove':
-                        class_type,
+                        class_type, _id = parts[1], int(parts[2])
+                        system.remove_object(_id, class_type)
+
+                    elif command == 'search':
+                        query = parts[1].replace('_', ' ')
+                        max_price = float(parts[2]) if len(parts) > 2 else None
+                        results = system.search_products(query, max_price)
+                        print(f"[{', '.join(str(p) for p in results)}]")
+
+        # Export Orders Output
+        if args.output_file:
+            with open(args.output_file, 'w') as out_f:
+                system.export_orders(out_f)
+        else:
+            system.export_orders(sys.stdout)
+
+        # Export System Output
+        if args.out_matamazon_system:
+            system.export_system_to_file(args.out_matamazon_system)
+
+    except Exception:
+        print("The matamazon script has encountered an error", file=sys.stderr)
+        sys.exit(1)
