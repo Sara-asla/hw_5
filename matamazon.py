@@ -254,7 +254,7 @@ def load_system_from_file(path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Matamazon System Script")
-    parser.add_argument('-l', required=True, dest='matamazon_log', help="Log file with actions")
+    parser.add_argument('-l', required=False, dest='matamazon_log', help="Log file with actions")
     parser.add_argument('-s', required=False, dest='matamazon_system', help="System file to load")
     parser.add_argument('-o', required=False, dest='output_file', help="Output JSON file for orders")
     parser.add_argument('-os', required=False, dest='out_matamazon_system', help="Output text file for system state")
@@ -271,7 +271,7 @@ if __name__ == '__main__':
         else:
             system = MatamazonSystem()
 
-        # Parse and execute log
+        # Parse and execute log if provided and exists
         if args.matamazon_log and os.path.exists(args.matamazon_log):
             with open(args.matamazon_log, 'r') as log_file:
                 for line in log_file:
@@ -280,6 +280,8 @@ if __name__ == '__main__':
                         continue
                     
                     parts = line.split()
+                    if not parts:
+                        continue
                     command = parts[0]
 
                     if command == 'register':
