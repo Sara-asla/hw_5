@@ -1,6 +1,7 @@
 import sys
 import json
 import argparse
+import os
 
 
 class InvalidIdException(Exception):
@@ -69,7 +70,6 @@ class Product:
     def __str__(self):
         return f"Product(id={self.id}, name='{self.name}', price={self.price}, supplier_id={self.supplier_id}, quantity={self.quantity})"
     
-    # Allows sorting by price natively
     def __lt__(self, other):
         return self.price < other.price
 
@@ -114,7 +114,6 @@ class MatamazonSystem:
         self.next_order_id = 1
 
     def register_entity(self, entity, is_customer):
-        # We need to make sure the ID does not exist in both customers and suppliers
         if entity.id in self.customers or entity.id in self.suppliers:
             raise InvalidIdException(f"ID {entity.id} already exists in the system.")
         
@@ -144,7 +143,6 @@ class MatamazonSystem:
         if quantity > product.quantity:
             return "The product does not exist in the system. The quantity requested for this product is greater than the quantity in stock"
             
-        # Success logic
         product.quantity -= quantity
         total_price = product.price * quantity
         new_order = Order(self.next_order_id, customer_id, product_id, quantity, total_price)
@@ -169,7 +167,6 @@ class MatamazonSystem:
         elif class_type == "Customer":
             if _id not in self.customers:
                 raise InvalidIdException(f"Customer ID {_id} not found.")
-            # Check for existing orders
             for order in self.orders.values():
                 if order.customer_id == _id:
                     raise InvalidIdException(f"Cannot remove Customer {_id}. Dependent orders exist.")
@@ -178,10 +175,8 @@ class MatamazonSystem:
         elif class_type == "Supplier":
             if _id not in self.suppliers:
                 raise InvalidIdException(f"Supplier ID {_id} not found.")
-            # Check if any product belongs to this supplier
             for product in self.products.values():
                 if product.supplier_id == _id:
-                    # Check if product is in an order
                     for order in self.orders.values():
                         if order.product_id == product.id:
                             raise InvalidIdException(f"Cannot remove Supplier {_id}. Dependent orders exist.")
@@ -231,6 +226,8 @@ class MatamazonSystem:
 
 def load_system_from_file(path):
     system = MatamazonSystem()
+    if not path or not os.path.exists(path):
+        return system
     try:
         with open(path, 'r') as f:
             lines = f.readlines()
@@ -239,9 +236,7 @@ def load_system_from_file(path):
             line = line.strip()
             if not line:
                 continue
-            
             try:
-                # eval requires the classes to be in scope
                 obj = eval(line) 
                 if isinstance(obj, Customer):
                     system.register_entity(obj, True)
@@ -250,7 +245,6 @@ def load_system_from_file(path):
                 elif isinstance(obj, Product):
                     system.add_or_update_product(obj)
             except Exception:
-                # Ignore illegal lines as per spec
                 pass
                 
         return system
@@ -268,63 +262,41 @@ if __name__ == '__main__':
     try:
         args = parser.parse_args()
     except SystemExit:
-        print("Usage: python3 matamazon.py -l <matamazon_log> -s <matamazon_system> -o <output_file> -os <out_matamazon_system>", file=sys.stderr)
         sys.exit(1)
 
     try:
-        # Load System
-        if args.matamazon_system:
+        # Load System Safely
+        if args.matamazon_system and os.path.exists(args.matamazon_system):
             system = load_system_from_file(args.matamazon_system)
         else:
             system = MatamazonSystem()
 
         # Parse and execute log
-        with open(args.matamazon_log, 'r') as log_file:
-            for line in log_file:
-                line = line.strip()
-                if not line or line.startswith('#'):
-                    continue
-                
-                parts = line.split()
-                command = parts[0]
+        if os.path.exists(args.matamazon_log):
+            with open(args.matamazon_log, 'r') as log_file:
+                for line in log_file:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    
+                    parts = line.split()
+                    command = parts[0]
 
-                if command == 'register':
-                    c_type, _id, name, city, address = parts[1], int(parts[2]), parts[3].replace('_', ' '), parts[4].replace('_', ' '), parts[5].replace('_', ' ')
-                    if c_type == 'customer':
-                        system.register_entity(Customer(_id, name, city, address), True)
-                    elif c_type == 'supplier':
-                        system.register_entity(Supplier(_id, name, city, address), False)
+                    if command == 'register':
+                        c_type, _id, name, city, address = parts[1], int(parts[2]), parts[3].replace('_', ' '), parts[4].replace('_', ' '), parts[5].replace('_', ' ')
+                        if c_type == 'customer':
+                            system.register_entity(Customer(_id, name, city, address), True)
+                        elif c_type == 'supplier':
+                            system.register_entity(Supplier(_id, name, city, address), False)
 
-                elif command == 'add' or command == 'update':
-                    _id, name, price, supplier_id, qty = int(parts[1]), parts[2].replace('_', ' '), float(parts[3]), int(parts[4]), int(parts[5])
-                    system.add_or_update_product(Product(_id, name, price, supplier_id, qty))
+                    elif command == 'add' or command == 'update':
+                        _id, name, price, supplier_id, qty = int(parts[1]), parts[2].replace('_', ' '), float(parts[3]), int(parts[4]), int(parts[5])
+                        system.add_or_update_product(Product(_id, name, price, supplier_id, qty))
 
-                elif command == 'order':
-                    customer_id, product_id = int(parts[1]), int(parts[2])
-                    qty = int(parts[3]) if len(parts) > 3 else 1
-                    system.place_order(customer_id, product_id, qty)
+                    elif command == 'order':
+                        customer_id, product_id = int(parts[1]), int(parts[2])
+                        qty = int(parts[3]) if len(parts) > 3 else 1
+                        system.place_order(customer_id, product_id, qty)
 
-                elif command == 'remove':
-                    class_type, _id = parts[1], int(parts[2])
-                    system.remove_object(_id, class_type)
-
-                elif command == 'search':
-                    query = parts[1].replace('_', ' ')
-                    max_price = float(parts[2]) if len(parts) > 2 else None
-                    results = system.search_products(query, max_price)
-                    print(f"[{', '.join(str(p) for p in results)}]")
-
-        # Export Orders Output
-        if args.output_file:
-            with open(args.output_file, 'w') as out_f:
-                system.export_orders(out_f)
-        else:
-            system.export_orders(sys.stdout)
-
-        # Export System Output
-        if args.out_matamazon_system:
-            system.export_system_to_file(args.out_matamazon_system)
-
-    except Exception:
-        print("The matamazon script has encountered an error")
-        sys.exit(1)
+                    elif command == 'remove':
+                        class_type,
