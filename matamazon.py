@@ -163,4 +163,175 @@ class MatamazonSystem:
             for order in self.orders.values():
                 if order.customer_id == _id:
                     raise InvalidIdException(f"Cannot remove Customer {_id}. Dependent orders exist.")
-            self.customers.pop(_id
+            self.customers.pop(_id)
+
+        elif class_type == "supplier":
+            if _id not in self.suppliers:
+                raise InvalidIdException(f"Supplier ID {_id} not found.")
+            for product in self.products.values():
+                if product.supplier_id == _id:
+                    for order in self.orders.values():
+                        if order.product_id == product.id:
+                            raise InvalidIdException(f"Cannot remove Supplier {_id}. Dependent orders exist.")
+            self.suppliers.pop(_id)
+
+        elif class_type == "product":
+            if _id not in self.products:
+                raise InvalidIdException(f"Product ID {_id} not found.")
+            for order in self.orders.values():
+                if order.product_id == _id:
+                    raise InvalidIdException(f"Cannot remove Product {_id}. Dependent orders exist.")
+            self.products.pop(_id)
+
+        else:
+            raise ValueError(f"Invalid class type: {class_type}")
+
+    def search_products(self, query, max_price=None):
+        results = []
+        for product in self.products.values():
+            if product.quantity > 0 and query in product.name:
+                if max_price is None or product.price <= max_price:
+                    results.append(product)
+        return sorted(results)
+
+    def export_system_to_file(self, path):
+        with open(path, 'w') as f:
+            for customer in self.customers.values():
+                f.write(str(customer) + "\n")
+            for supplier in self.suppliers.values():
+                f.write(str(supplier) + "\n")
+            for product in self.products.values():
+                f.write(str(product) + "\n")
+
+    def export_orders(self, out_file):
+        city_orders = {}
+        for order in self.orders.values():
+            if order.product_id in self.products:
+                supplier_id = self.products[order.product_id].supplier_id
+                city = self.suppliers[supplier_id].city
+                
+                if city not in city_orders:
+                    city_orders[city] = []
+                city_orders[city].append(str(order))
+                
+        json.dump(city_orders, out_file)
+
+
+def load_system_from_file(path):
+    system = MatamazonSystem()
+    if not path or not os.path.exists(path):
+        return system
+    try:
+        with open(path, 'r') as f:
+            lines = f.readlines()
+            
+        customers = []
+        suppliers = []
+        products = []
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            if line.startswith(("Customer(", "Supplier(", "Product(", "Order(")):
+                try:
+                    obj = eval(line) 
+                    if isinstance(obj, Customer):
+                        customers.append(obj)
+                    elif isinstance(obj, Supplier):
+                        suppliers.append(obj)
+                    elif isinstance(obj, Product):
+                        products.append(obj)
+                except Exception:
+                    pass
+                    
+        for c in customers:
+            system.register_entity(c, True)
+        for s in suppliers:
+            system.register_entity(s, False)
+        for p in products:
+            system.add_or_update_product(p)
+                
+        return system
+    except Exception as e:
+        raise e
+
+
+if __name__ == '__main__':
+    args = {
+        'matamazon_log': None,
+        'matamazon_system': None,
+        'output_file': None,
+        'out_matamazon_system': None
+    }
+    
+    argv = sys.argv[1:]
+    i = 0
+    while i < len(argv):
+        flag = argv[i]
+        val = argv[i+1] if i + 1 < len(argv) else None
+        
+        if flag == '-l' and val:
+            args['matamazon_log'] = val
+        elif flag == '-s' and val:
+            args['matamazon_system'] = val
+        elif flag == '-o' and val:
+            args['output_file'] = val
+        elif flag == '-os' and val:
+            args['out_matamazon_system'] = val
+        
+        i += 2
+        
+    if args['matamazon_system'] and os.path.exists(args['matamazon_system']):
+        system = load_system_from_file(args['matamazon_system'])
+    else:
+        system = MatamazonSystem()
+
+    if args['matamazon_log'] and os.path.exists(args['matamazon_log']):
+        with open(args['matamazon_log'], 'r') as log_file:
+            for line in log_file:
+                line = line.split('#')[0].strip()
+                if not line:
+                    continue
+                
+                parts = line.split()
+                if not parts:
+                    continue
+                command = parts[0].strip().lower()
+
+                if command == 'register':
+                    c_type = parts[1].strip().lower()
+                    _id = int(parts[2])
+                    name = parts[3].replace('_', ' ')
+                    city = parts[4].replace('_', ' ')
+                    address = parts[5].replace('_', ' ')
+                    if c_type == 'customer':
+                        system.register_entity(Customer(_id, name, city, address), True)
+                    elif c_type == 'supplier':
+                        system.register_entity(Supplier(_id, name, city, address), False)
+
+                elif command == 'add' or command == 'update':
+                    _id = int(parts[1])
+                    name = parts[2].replace('_', ' ')
+                    price = float(parts[3])
+                    supplier_id = int(parts[4])
+                    qty = int(parts[5])
+                    system.add_or_update_product(Product(_id, name, price, supplier_id, qty))
+
+                elif command == 'order':
+                    customer_id = int(parts[1])
+                    product_id = int(parts[2])
+                    qty = int(parts[3]) if len(parts) > 3 else 1
+                    system.place_order(customer_id, product_id, qty)
+
+                elif command == 'remove':
+                    class_type = parts[1].strip()
+                    _id = int(parts[2])
+                    system.remove_object(_id, class_type)
+
+                elif command == 'search':
+                    query = parts[1].replace('_', ' ')
+                    max_price = float(parts[2]) if len(parts) > 2 else None
+                    results = system.search_products(query, max_price)
+                    print(f
