@@ -150,7 +150,6 @@ class MatamazonSystem:
             if _id not in self.orders:
                 raise InvalidIdException("Order does not exist.")
             order = self.orders[_id]
-            # מחזירים את הכמות למלאי של המוצר
             if order.product_id in self.products:
                 self.products[order.product_id].quantity += order.quantity
             del self.orders[_id]
@@ -213,7 +212,6 @@ class MatamazonSystem:
 
 def load_system_from_file(path):
     sys = MatamazonSystem()
-    
     if not os.path.exists(path):
         return sys
         
@@ -242,6 +240,12 @@ def load_system_from_file(path):
         if isinstance(obj, Product):
             sys.add_or_update_product(obj)
             
+    for obj in parsed_objects:
+        if isinstance(obj, Order):
+            sys.orders[obj.id] = obj
+            if obj.id >= sys.next_order_id:
+                sys.next_order_id = obj.id + 1
+                
     return sys
 
 
@@ -250,8 +254,8 @@ def print_usage_and_exit():
     sys.exit(1)
 
 def print_error_and_exit():
-    sys.stderr.write("The matamazon script has encountered an error\n")
-    sys.exit(1)
+    print("The matamazon script has encountered an error")
+    sys.exit(0)
 
 def parse_args():
     args = {'-l': None, '-s': None, '-o': None, '-os': None}
@@ -346,7 +350,7 @@ def main():
 
     except SystemExit:
         raise
-    except Exception as e:
+    except Exception:
         print_error_and_exit()
 
 if __name__ == "__main__":
