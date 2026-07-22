@@ -60,7 +60,6 @@ class Product:
         self.quantity = quantity
 
     def __lt__(self, other):
-        # Enables sorting by price ascending
         return self.price < other.price
 
     def __repr__(self):
@@ -151,13 +150,12 @@ class MatamazonSystem:
             if _id not in self.orders:
                 raise InvalidIdException("Order does not exist.")
             order = self.orders[_id]
-            # Return ordered quantity to product stock
+            # מחזירים את הכמות למלאי של המוצר
             if order.product_id in self.products:
                 self.products[order.product_id].quantity += order.quantity
             del self.orders[_id]
             return order.quantity
 
-        # For Customer, Supplier, Product - verify no dependencies in active orders
         for order in self.orders.values():
             if class_type == "customer" and order.customer_id == _id:
                 raise InvalidIdException("Cannot remove Customer with existing orders.")
@@ -215,15 +213,13 @@ class MatamazonSystem:
 
 def load_system_from_file(path):
     sys = MatamazonSystem()
+    
     if not os.path.exists(path):
-        # Let this bubble up and cause the script to exit(1) per spec
-        raise FileNotFoundError(f"File {path} not found.")
+        return sys
         
     with open(path, 'r') as f:
         lines = f.readlines()
         
-    # We must load objects in TWO PASSES because the PDF explicitly states:
-    # "יכול להיות שורה של מוצר ששייך לספק כלשהו שנמצא בתחתית הקובץ"
     parsed_objects = []
     
     for line in lines:
@@ -231,22 +227,17 @@ def load_system_from_file(path):
         if not line:
             continue
         try:
-            # If creating a class raises an exception (e.g. InvalidIdException),
-            # it is not caught by (SyntaxError, NameError) and will propagate upwards.
             obj = eval(line)
             parsed_objects.append(obj)
         except (SyntaxError, NameError):
-            # Ignore illegal lines as requested
             continue
             
-    # First Pass: Register Customers and Suppliers
     for obj in parsed_objects:
         if isinstance(obj, Customer):
             sys.register_entity(obj, True)
         elif isinstance(obj, Supplier):
             sys.register_entity(obj, False)
             
-    # Second Pass: Add Products (now we guarantee their suppliers exist)
     for obj in parsed_objects:
         if isinstance(obj, Product):
             sys.add_or_update_product(obj)
@@ -255,7 +246,7 @@ def load_system_from_file(path):
 
 
 def print_usage_and_exit():
-    sys.stderr.write("Usage: python3 matamazon.py -l < matamazon_log > -s < matamazon_system > -0 <output_file> -os <out_matamazon_system>\n")
+    sys.stderr.write("Usage: python3 matamazon.py -l < matamazon_log > -s < matamazon_system > -o <output_file> -os <out_matamazon_system>\n")
     sys.exit(1)
 
 def print_error_and_exit():
@@ -269,7 +260,6 @@ def parse_args():
     while i < len(sys.argv):
         flag = sys.argv[i]
         
-        # Guarding against typos in the PDF execution command
         if flag == '-1': 
             flag = '-l'
         if flag == '-0': 
@@ -298,12 +288,12 @@ def main():
         else:
             system = MatamazonSystem()
 
-        # Execute logs
         with open(args['-l'], 'r') as f:
             for line in f:
-                line = line.strip()
-                if not line or line.startswith('#'):
+                line = line.split('#')[0].strip()
+                if not line:
                     continue
+                
                 parts = line.split()
                 cmd = parts[0]
 
@@ -344,13 +334,12 @@ def main():
                     results = system.search_products(query, max_price)
                     print(results)
 
-        # Output logic
         if args['-o']:
             with open(args['-o'], 'w') as out_f:
                 system.export_orders(out_f)
         else:
             system.export_orders(sys.stdout)
-            print() # add newline for clarity if printed to stdout
+            print() 
             
         if args['-os']:
             system.export_system_to_file(args['-os'])
