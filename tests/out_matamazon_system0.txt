@@ -1,5 +1,0 @@
-Customer(id=55, name='Kelly Kell', city='Michmoret', address='Harmzor 22')
-Supplier(id=34, name='Albert Almost Einstein', city='Sde Boker', address='Stam Ktovet')
-Product(id=123, name='plane paper', price=0.1, supplier_id=34, quantity=4500)
-Product(id=125, name='green paper', price=0.5, supplier_id=34, quantity=499)
-Product(id=126, name='red paper', price=0.5, supplier_id=34, quantity=50)
